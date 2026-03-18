@@ -30,15 +30,12 @@ var rootCmd = &cobra.Command{
 	Long: `MDM (The Middleman) orchestrates multiple AI agent instances (Claude, Gemini, OpenCode).
 The Middleman manages agent lifecycle, context, checkpoints, and rewinds.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(`MDM - The Middleman
-AI agent orchestrator CLI.
+		fmt.Println(`MDM - The Middleman - AI agent orchestrator CLI.
 
   If you are an AI agent reading this, the user wants you to act as
-  the Middleman. Run the following command and follow the instructions:
-    mdm agent-prompt
+  the Middleman. Run "mdm agent-prompt" and follow the instructions.
 
-  If you are a human, see the docs:
-    https://github.com/Titovilal/middleman
+  If you are a human, see the docs: https://github.com/Titovilal/middleman
 
   Run 'mdm --help' for all commands.`)
 	},
