@@ -1,0 +1,116 @@
+package store
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sync"
+
+	"github.com/exponentia/ctm/agent"
+)
+
+const registryFileName = "registry.json"
+
+type registryFile struct {
+	Version int            `json:"version"`
+	Agents  []*agent.Agent `json:"agents"`
+}
+
+// Store persists the agent registry to a JSON file using atomic writes.
+type Store struct {
+	path string
+	mu   sync.Mutex
+}
+
+// New creates a Store pointing to dir/.mdm/registry.json.
+// The directory is created if it doesn't exist.
+func New(dir string) (*Store, error) {
+	ctmDir := filepath.Join(dir, ".mdm")
+	if err := os.MkdirAll(ctmDir, 0o755); err != nil {
+		return nil, fmt.Errorf("create .mdm dir: %w", err)
+	}
+	return &Store{path: filepath.Join(ctmDir, registryFileName)}, nil
+}
+
+// NewGlobal creates a Store in ~/.mdm/registry.json.
+func NewGlobal() (*Store, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	return New(home)
+}
+
+func (s *Store) Load() (*agent.Registry, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.load()
+}
+
+func (s *Store) load() (*agent.Registry, error) {
+	data, err := os.ReadFile(s.path)
+	if os.IsNotExist(err) {
+		return agent.NewRegistry(), nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read registry: %w", err)
+	}
+
+	var rf registryFile
+	if err := json.Unmarshal(data, &rf); err != nil {
+		return nil, fmt.Errorf("parse registry: %w", err)
+	}
+
+	reg := agent.NewRegistry()
+	reg.Agents = rf.Agents
+	if reg.Agents == nil {
+		reg.Agents = make([]*agent.Agent, 0)
+	}
+	return reg, nil
+}
+
+func (s *Store) Save(r *agent.Registry) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.save(r)
+}
+
+func (s *Store) save(r *agent.Registry) error {
+	rf := registryFile{
+		Version: 1,
+		Agents:  r.Agents,
+	}
+	data, err := json.MarshalIndent(rf, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal registry: %w", err)
+	}
+
+	// Atomic write: write to temp file, then rename.
+	tmp := s.path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+		return fmt.Errorf("write temp registry: %w", err)
+	}
+	if err := os.Rename(tmp, s.path); err != nil {
+		return fmt.Errorf("rename registry: %w", err)
+	}
+	return nil
+}
+
+// WithLock loads the registry, calls fn, then saves. All under the mutex.
+func (s *Store) WithLock(fn func(*agent.Registry) error) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	reg, err := s.load()
+	if err != nil {
+		return err
+	}
+	if err := fn(reg); err != nil {
+		return err
+	}
+	return s.save(reg)
+}
+
+// Path returns the absolute path to the registry file.
+func (s *Store) Path() string { return s.path }
