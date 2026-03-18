@@ -41,8 +41,9 @@ var updateCmd = &cobra.Command{
 			return fmt.Errorf("failed to parse release info: %w", err)
 		}
 
-		latest := release.TagName
-		if latest == Version {
+		latest := strings.TrimPrefix(release.TagName, "v")
+		current := strings.TrimPrefix(Version, "v")
+		if latest == current {
 			fmt.Println("Already up to date.")
 			return nil
 		}
@@ -99,7 +100,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the current version",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(Version)
+		fmt.Println(strings.TrimPrefix(Version, "v"))
 	},
 }
 
