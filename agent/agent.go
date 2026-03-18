@@ -51,15 +51,66 @@ type CheckpointRecord struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// TaskStatus tracks whether a background task is still running.
+type TaskStatus string
+
+const (
+	TaskQueued    TaskStatus = "queued"
+	TaskPending   TaskStatus = "pending"
+	TaskCompleted TaskStatus = "completed"
+	TaskFailed    TaskStatus = "failed"
+)
+
 // TaskRecord is one entry in the agent's task log.
 type TaskRecord struct {
-	TaskID      string    `json:"task_id"`
-	Prompt      string    `json:"prompt"`
-	Response    string    `json:"response"`
-	IsError     bool      `json:"is_error"`
-	ErrorDetail string    `json:"error_detail,omitempty"`
-	StartedAt   time.Time `json:"started_at"`
-	CompletedAt time.Time `json:"completed_at"`
+	TaskID      string     `json:"task_id"`
+	Prompt      string     `json:"prompt"`
+	Response    string     `json:"response"`
+	IsError     bool       `json:"is_error"`
+	ErrorDetail string     `json:"error_detail,omitempty"`
+	Status      TaskStatus `json:"status"`
+	StartedAt   time.Time  `json:"started_at"`
+	CompletedAt time.Time  `json:"completed_at"`
+}
+
+// LatestTask returns the most recent task, or nil if none.
+func (a *Agent) LatestTask() *TaskRecord {
+	if len(a.TaskLog) == 0 {
+		return nil
+	}
+	t := a.TaskLog[len(a.TaskLog)-1]
+	return &t
+}
+
+// TaskByID returns the task with the given ID, or nil.
+func (a *Agent) TaskByID(taskID string) *TaskRecord {
+	for i := range a.TaskLog {
+		if a.TaskLog[i].TaskID == taskID {
+			return &a.TaskLog[i]
+		}
+	}
+	return nil
+}
+
+// QueuedTasks returns all tasks with status "queued", in order.
+func (a *Agent) QueuedTasks() []TaskRecord {
+	var queued []TaskRecord
+	for _, t := range a.TaskLog {
+		if t.Status == TaskQueued {
+			queued = append(queued, t)
+		}
+	}
+	return queued
+}
+
+// HasPendingWork returns true if the agent has a pending or queued task.
+func (a *Agent) HasPendingWork() bool {
+	for _, t := range a.TaskLog {
+		if t.Status == TaskPending || t.Status == TaskQueued {
+			return true
+		}
+	}
+	return false
 }
 
 // LatestCheckpoint returns the most recent checkpoint, or nil if none.

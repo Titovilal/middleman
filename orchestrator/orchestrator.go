@@ -57,6 +57,7 @@ func (o *Orchestrator) Spawn(ctx context.Context, id, briefing, connectorName st
 			Response:    result.FinalText,
 			IsError:     result.IsError,
 			ErrorDetail: result.ErrorDetail,
+			Status:      agent.TaskCompleted,
 			StartedAt:   startedAt,
 			CompletedAt: now,
 		}},
@@ -79,15 +80,99 @@ func (o *Orchestrator) Spawn(ctx context.Context, id, briefing, connectorName st
 	return a, nil
 }
 
-// Delegate sends a task to an agent and returns the task record.
-// timeout overrides the default 5-minute limit (0 = use default).
-func (o *Orchestrator) Delegate(ctx context.Context, agentID, prompt string, timeout time.Duration) (*agent.TaskRecord, error) {
-	conn, a, err := o.loadAgentAndConnector(agentID)
+// DelegateAsync registers a task for an agent and returns the task record.
+// If the agent is idle, the task is set to "pending" and a background process should be launched.
+// If the agent is already working, the task is "queued" and will run automatically when the current task finishes.
+func (o *Orchestrator) DelegateAsync(ctx context.Context, agentID, prompt string, timeout time.Duration) (*agent.TaskRecord, error) {
+	_, a, err := o.loadAgentAndConnector(agentID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Auto-checkpoint before the task to preserve pre-task state.
+	if timeout == 0 {
+		timeout = 5 * time.Minute
+	}
+
+	// If agent is busy, queue the task instead of running immediately.
+	queued := a.Status == agent.StatusWorking
+	if queued && len(a.QueuedTasks()) >= 2 {
+		return nil, fmt.Errorf("agent %s already has 2 queued tasks, wait or use another agent", agentID)
+	}
+	status := agent.TaskPending
+	if queued {
+		status = agent.TaskQueued
+	}
+
+	task := &agent.TaskRecord{
+		TaskID:    uuid.NewString(),
+		Prompt:    prompt,
+		Status:    status,
+		StartedAt: time.Now(),
+	}
+
+	if !queued {
+		a.Status = agent.StatusWorking
+	}
+	a.LastActiveAt = time.Now()
+	a.TaskLog = append(a.TaskLog, *task)
+
+	if err := o.store.WithLock(func(reg *agent.Registry) error {
+		return reg.Update(a)
+	}); err != nil {
+		return nil, fmt.Errorf("save agent after delegate: %w", err)
+	}
+
+	return task, nil
+}
+
+// RunTask executes a pending task synchronously. Called by the background process.
+// After completing, it processes any queued tasks on the same agent.
+func (o *Orchestrator) RunTask(ctx context.Context, agentID, taskID string, timeout time.Duration) error {
+	if err := o.runSingleTask(ctx, agentID, taskID, timeout); err != nil {
+		return err
+	}
+
+	// Process queued tasks.
+	for {
+		_, a, err := o.loadAgentAndConnector(agentID)
+		if err != nil {
+			return err
+		}
+
+		queued := a.QueuedTasks()
+		if len(queued) == 0 {
+			return nil
+		}
+
+		// Promote first queued task to pending.
+		next := a.TaskByID(queued[0].TaskID)
+		next.Status = agent.TaskPending
+		next.StartedAt = time.Now()
+		a.Status = agent.StatusWorking
+		if err := o.store.WithLock(func(reg *agent.Registry) error {
+			return reg.Update(a)
+		}); err != nil {
+			return err
+		}
+
+		if err := o.runSingleTask(ctx, agentID, next.TaskID, timeout); err != nil {
+			return err
+		}
+	}
+}
+
+func (o *Orchestrator) runSingleTask(ctx context.Context, agentID, taskID string, timeout time.Duration) error {
+	conn, a, err := o.loadAgentAndConnector(agentID)
+	if err != nil {
+		return err
+	}
+
+	task := a.TaskByID(taskID)
+	if task == nil {
+		return fmt.Errorf("task %s not found on agent %s", taskID, agentID)
+	}
+
+	// Checkpoint before running.
 	label := fmt.Sprintf("pre-task-%s", time.Now().Format("20060102-150405"))
 	if err := o.appendCheckpoint(ctx, a, conn, label); err != nil {
 		fmt.Printf("warning: could not create pre-task checkpoint: %v\n", err)
@@ -98,37 +183,35 @@ func (o *Orchestrator) Delegate(ctx context.Context, agentID, prompt string, tim
 	}
 	req := connector.RunRequest{
 		SessionID: a.SessionID,
-		Prompt:    prompt,
+		Prompt:    task.Prompt,
 		WorkDir:   a.WorkDir,
 		Timeout:   timeout,
 	}
 
-	startedAt := time.Now()
-	a.Status = agent.StatusWorking
 	result, runErr := conn.Run(ctx, req)
 	now := time.Now()
-	a.Status = agent.StatusIdle
-	a.LastActiveAt = now
 
 	if result.SessionID != "" {
 		a.SessionID = result.SessionID
 	}
 
-	task := &agent.TaskRecord{
-		TaskID:      uuid.NewString(),
-		Prompt:      prompt,
-		Response:    result.FinalText,
-		IsError:     result.IsError || runErr != nil,
-		StartedAt:   startedAt,
-		CompletedAt: now,
-	}
+	task.Response = result.FinalText
+	task.CompletedAt = now
+	task.IsError = result.IsError || runErr != nil
 	if runErr != nil {
 		task.ErrorDetail = runErr.Error()
 	} else {
 		task.ErrorDetail = result.ErrorDetail
 	}
 
-	a.TaskLog = append(a.TaskLog, *task)
+	if task.IsError {
+		task.Status = agent.TaskFailed
+	} else {
+		task.Status = agent.TaskCompleted
+	}
+
+	a.Status = agent.StatusIdle
+	a.LastActiveAt = now
 
 	// Post-task checkpoint.
 	postLabel := fmt.Sprintf("post-task-%s", now.Format("20060102-150405"))
@@ -136,13 +219,9 @@ func (o *Orchestrator) Delegate(ctx context.Context, agentID, prompt string, tim
 		fmt.Printf("warning: could not create post-task checkpoint: %v\n", err)
 	}
 
-	if err := o.store.WithLock(func(reg *agent.Registry) error {
+	return o.store.WithLock(func(reg *agent.Registry) error {
 		return reg.Update(a)
-	}); err != nil {
-		return nil, fmt.Errorf("save agent after delegate: %w", err)
-	}
-
-	return task, nil
+	})
 }
 
 // Rewind forks an agent back to the given checkpoint (or latest if empty).
@@ -188,6 +267,7 @@ func (o *Orchestrator) Rewind(ctx context.Context, agentID, checkpointLabel stri
 		TaskID:      uuid.NewString(),
 		Prompt:      fmt.Sprintf("__rewind_to:%s__", cp.Label),
 		Response:    fmt.Sprintf("rewound to checkpoint %q (turn %d)", cp.Label, cp.TurnIndex),
+		Status:      agent.TaskCompleted,
 		StartedAt:   time.Now(),
 		CompletedAt: time.Now(),
 	})
