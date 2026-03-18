@@ -14,7 +14,7 @@ git tag 26.3.18.1
 git push origin 26.3.18.1
 ```
 
-The workflow compiles binaries for linux/amd64, linux/arm64, darwin/amd64, darwin/arm64 and creates a GitHub Release automatically.
+The workflow compiles binaries for linux/amd64, linux/arm64, darwin/amd64, darwin/arm64, windows/amd64 and creates a GitHub Release automatically.
 
 ## Commit naming
 
@@ -45,7 +45,7 @@ No `v` prefix.
 
 After pushing the tag, check:
 1. https://github.com/Titovilal/middleman/actions — workflow should be green
-2. https://github.com/Titovilal/middleman/releases — release should have 4 binaries
+2. https://github.com/Titovilal/middleman/releases — release should have 5 binaries
 
 ## Test the install script
 

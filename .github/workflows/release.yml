@@ -25,6 +25,9 @@ jobs:
           - goos: darwin
             goarch: arm64
             suffix: darwin-arm64
+          - goos: windows
+            goarch: amd64
+            suffix: windows-amd64.exe
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
