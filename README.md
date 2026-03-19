@@ -16,9 +16,7 @@ MDM externalizes that cognitive load.
 
 The **Middleman** is an orchestrator. It manages AI coding agents but doesn't write code itself — agents do that. The Middleman can run project commands (build, test, git, etc.) to verify work and gather information.
 
-Each agent is a subprocess running a real AI CLI. The Middleman only sees the **final response** — never the internal stream of tool calls, file reads, or intermediate reasoning. Each agent is a black box: task in, response out.
-
-Rewinds are not a sign that something went wrong. They are a deliberate strategy to preserve clean context before a bad direction infects an agent.
+Each agent is a subprocess running a real AI CLI. The Middleman only sees the **final response** — never the internal stream of tool calls, file reads, or intermediate reasoning. Each agent is a black box: task in, response out. When an agent's context gets contaminated, the Middleman rewinds it to a clean checkpoint — this is a deliberate strategy, not an error recovery mechanism.
 
 ## Connectors
 
@@ -56,19 +54,10 @@ mv $(go env GOPATH)/bin/middleman $(go env GOPATH)/bin/mdm
 
 ## Usage
 
-### For AI agents
-
-Run `mdm agent-prompt` to get the full system prompt that tells an AI agent how to act as the Middleman. Pipe it into your agent's system prompt or CLAUDE.md:
+### Launch the Middleman
 
 ```bash
-# Add to CLAUDE.md
-mdm agent-prompt > CLAUDE.md
-
-# Or use directly with Claude Code
-claude --append-system-prompt "$(mdm agent-prompt)"
-
-# Or launch an interactive session with the prompt pre-injected
-mdm launch claude
+mdm launch claude    # or gemini, codex
 ```
 
 ### Spawn an agent and delegate a task
