@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/Titovilal/middleman/config"
 	"github.com/Titovilal/middleman/connector"
@@ -38,14 +39,7 @@ var rootCmd = &cobra.Command{
 	Long: `MDM (The Middleman) orchestrates multiple AI agent instances (Claude, Codex, Gemini, OpenCode).
 The Middleman manages agent lifecycle, context, checkpoints, and rewinds.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(`MDM - The Middleman - AI agent orchestrator CLI.
-
-  If you are an AI agent reading this, the user wants you to act as
-  the Middleman. Run "mdm agent-prompt" and follow the instructions.
-
-  If you are a human, see the docs: https://github.com/Titovilal/middleman
-
-  Run 'mdm --help' for all commands.`)
+		printBanner()
 	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Skip heavy init for the root command and any command that
@@ -103,4 +97,42 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&flags.workDir, "workdir", "w", "", "project directory (default: current dir)")
 	rootCmd.PersistentFlags().StringVarP(&flags.connector, "connector", "c", "", "default connector (claude|codex|gemini|opencode)")
 	rootCmd.PersistentFlags().BoolVarP(&flags.global, "global", "g", false, "use ~/.mdm/ instead of ./.mdm/")
+}
+
+func printBanner() {
+	const (
+		reset  = "\033[0m"
+		bold   = "\033[1m"
+		dim    = "\033[2m"
+		cyan   = "\033[36m"
+		blue   = "\033[34m"
+		purple = "\033[35m"
+		white  = "\033[97m"
+		green  = "\033[32m"
+	)
+
+	fmt.Println()
+	fmt.Println(purple + bold + "  ███╗   ███╗██████╗ ███╗   ███╗" + reset)
+	fmt.Println(purple + bold + "  ████╗ ████║██╔══██╗████╗ ████║" + reset)
+	fmt.Println(cyan + bold + "  ██╔████╔██║██║  ██║██╔████╔██║" + reset)
+	fmt.Println(cyan + bold + "  ██║╚██╔╝██║██║  ██║██║╚██╔╝██║" + reset)
+	fmt.Println(blue + bold + "  ██║ ╚═╝ ██║██████╔╝██║ ╚═╝ ██║" + reset)
+	fmt.Println(blue + bold + "  ╚═╝     ╚═╝╚═════╝ ╚═╝     ╚═╝" + reset)
+	fmt.Println()
+	fmt.Println(white + bold + "  The Middleman" + reset + dim + " — AI agent orchestrator" + reset)
+	fmt.Println()
+	fmt.Printf(dim+"  version "+reset+green+"%s"+reset+dim+"  go "+reset+green+"%s"+reset+dim+"  %s/%s"+reset+"\n",
+		Version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	fmt.Println()
+	fmt.Println(dim + "  Connectors:  " + reset + cyan + "claude" + reset + dim + " · " + reset + cyan + "codex" + reset + dim + " · " + reset + cyan + "gemini" + reset + dim + " · " + reset + cyan + "opencode" + reset)
+	fmt.Println()
+	fmt.Println(dim + "  Get started:" + reset)
+	fmt.Println(dim + "    $ " + reset + white + "mdm sync-docs" + reset + dim + "         initialize .mdm/ in your project" + reset)
+	fmt.Println(dim + "    $ " + reset + white + "mdm launch claude" + reset + dim + "    spin up a Claude agent" + reset)
+	fmt.Println(dim + "    $ " + reset + white + "mdm spawn <id> ..." + reset + dim + "   send a task to an agent" + reset)
+	fmt.Println(dim + "    $ " + reset + white + "mdm status" + reset + dim + "            check running agents" + reset)
+	fmt.Println()
+	fmt.Println(dim + "  Run " + reset + white + "mdm --help" + reset + dim + " for all commands." + reset)
+	fmt.Println(dim + "  Docs: " + reset + blue + "https://github.com/Titovilal/middleman" + reset)
+	fmt.Println()
 }

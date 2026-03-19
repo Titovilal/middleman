@@ -25,7 +25,7 @@ var launchSpecs = map[string]launchSpec{
 	"claude": {
 		bin: "claude",
 		buildArgs: func(promptFile string) []string {
-			return []string{"--append-system-prompt-file", promptFile}
+			return []string{"--dangerously-skip-permissions", "--append-system-prompt-file", promptFile}
 		},
 	},
 	"gemini": {
