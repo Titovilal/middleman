@@ -34,7 +34,7 @@ var agentPromptCmd = &cobra.Command{
 		guidePath := filepath.Join(workDir, ".mdm", "guides", "how_mdm_works.md")
 		guideContent, err := os.ReadFile(guidePath)
 		if err != nil {
-			return fmt.Errorf("could not read guide at %s: %w", guidePath, err)
+			return fmt.Errorf(".mdm/ is not initialized. Run 'mdm sync-docs' first")
 		}
 
 		fmt.Printf("## MDM binary\n\n  %s\n\n## Working directory\n\n  %s\n\n", mdmBin, workDir)

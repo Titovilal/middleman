@@ -17,28 +17,29 @@ var launchFlags struct {
 
 // launchSpec defines how to start an interactive session for a given connector.
 type launchSpec struct {
-	bin  string
-	// buildArgs returns the CLI arguments to launch interactively with prompt injection.
-	buildArgs func(prompt string) []string
+	bin       string
+	buildArgs func(promptFile string) []string
 }
 
 var launchSpecs = map[string]launchSpec{
 	"claude": {
 		bin: "claude",
-		buildArgs: func(prompt string) []string {
-			return []string{"--append-system-prompt", prompt}
+		buildArgs: func(promptFile string) []string {
+			return []string{"--append-system-prompt-file", promptFile}
 		},
 	},
 	"gemini": {
 		bin: "gemini",
-		buildArgs: func(prompt string) []string {
-			return []string{"--system-prompt", prompt}
+		buildArgs: func(promptFile string) []string {
+			data, _ := os.ReadFile(promptFile)
+			return []string{"--system-prompt", string(data)}
 		},
 	},
 	"codex": {
 		bin: "codex",
-		buildArgs: func(prompt string) []string {
-			return []string{"--instructions", prompt}
+		buildArgs: func(promptFile string) []string {
+			data, _ := os.ReadFile(promptFile)
+			return []string{"--instructions", string(data)}
 		},
 	},
 }
@@ -86,18 +87,30 @@ Examples:
 		guidePath := filepath.Join(workDir, ".mdm", "guides", "how_mdm_works.md")
 		guideContent, err := os.ReadFile(guidePath)
 		if err != nil {
-			return fmt.Errorf("could not read guide at %s: %w", guidePath, err)
+			return fmt.Errorf(".mdm/ is not initialized. Run 'mdm sync-docs' first")
 		}
 		prompt := fmt.Sprintf("## MDM binary\n\n  %s\n\n## Working directory\n\n  %s\n\n%s", mdmBin, workDir, string(guideContent))
 
-		// Append project overview if available.
+		// Append project overview if available, warn if docs are not populated.
 		overviewPath := filepath.Join(workDir, ".mdm", "docs", "project_overview.md")
 		if overview, err := os.ReadFile(overviewPath); err == nil {
 			prompt += "\n\n" + string(overview)
+		} else {
+			fmt.Fprintf(os.Stderr, "Warning: .mdm/docs/ is not populated. Run 'mdm sync-docs' to generate project documentation.\n")
 		}
 
+		// Write combined prompt to .mdm/.prompt_cache.md inside the project.
+		promptFile := filepath.Join(workDir, ".mdm", ".prompt_cache.md")
+		if err := os.MkdirAll(filepath.Dir(promptFile), 0o755); err != nil {
+			return fmt.Errorf("create .mdm dir: %w", err)
+		}
+		if err := os.WriteFile(promptFile, []byte(prompt), 0o644); err != nil {
+			return fmt.Errorf("write prompt file: %w", err)
+		}
+		defer os.Remove(promptFile)
+
 		// Build the command.
-		cliArgs := spec.buildArgs(prompt)
+		cliArgs := spec.buildArgs(promptFile)
 		cliPath, err := exec.LookPath(spec.bin)
 		if err != nil {
 			return fmt.Errorf("%s CLI not found in PATH: %w", spec.bin, err)

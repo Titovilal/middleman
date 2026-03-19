@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/Titovilal/middleman/config"
 	"github.com/Titovilal/middleman/connector"
@@ -80,6 +81,13 @@ The Middleman manages agent lifecycle, context, checkpoints, and rewinds.`,
 		reg.Register(opencodeconn.New())
 
 		orch = orchestrator.New(s, reg, cfg.WorkDir)
+
+		// If .mdm/ is not populated yet, only sync-docs is allowed.
+		guidePath := filepath.Join(cfg.WorkDir, ".mdm", "guides", "how_mdm_works.md")
+		if _, err := os.Stat(guidePath); os.IsNotExist(err) && cmd.Name() != "sync-docs" {
+			return fmt.Errorf(".mdm/ is not initialized. Run 'mdm sync-docs' first")
+		}
+
 		return nil
 	},
 }
