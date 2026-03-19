@@ -1,6 +1,6 @@
 # MDM - The Middleman
 
-A CLI tool for orchestrating multiple AI agent instances (Claude Code, Gemini CLI, OpenCode) from a single manager.
+A CLI tool for orchestrating multiple AI agent instances (Claude Code, Gemini CLI, OpenCode, Codex) from a single manager.
 
 ## The problem
 
@@ -14,11 +14,7 @@ MDM externalizes that cognitive load.
 
 ## How it works
 
-The **Middleman** is a pure orchestrator. It never reads files or runs code directly. It only:
-- Keeps a registry of active agents and their known context
-- Delegates tasks to the right agent
-- Creates checkpoints after each task
-- Rewinds agents to a previous checkpoint when their context gets contaminated
+The **Middleman** is an orchestrator. It manages AI coding agents but doesn't write code itself — agents do that. The Middleman can run project commands (build, test, git, etc.) to verify work and gather information.
 
 Each agent is a subprocess running a real AI CLI. The Middleman only sees the **final response** — never the internal stream of tool calls, file reads, or intermediate reasoning. Each agent is a black box: task in, response out.
 
@@ -31,8 +27,9 @@ MDM uses a pluggable connector interface. Each connector wraps a different AI CL
 | Connector | Status |
 |---|---|
 | `claude` | Implemented (Claude Code CLI) |
-| `gemini` | Stub |
-| `opencode` | Stub |
+| `gemini` | Implemented (Gemini CLI) |
+| `codex` | Implemented (Codex CLI) |
+| `opencode` | Implemented (OpenCode CLI) |
 
 Adding a new connector only requires implementing the `AgentConnector` interface in `connector/<name>/`.
 
@@ -69,73 +66,60 @@ mdm agent-prompt > CLAUDE.md
 
 # Or use directly with Claude Code
 claude --append-system-prompt "$(mdm agent-prompt)"
+
+# Or launch an interactive session with the prompt pre-injected
+mdm launch claude
 ```
 
-### Spawn an agent
+### Spawn an agent and delegate a task
 
 ```bash
-mdm spawn agent-auth --briefing "You are working on the authentication module of this project."
-mdm spawn agent-db --connector gemini --briefing "You handle database migrations."
+mdm spawn auth --briefing "Auth module" "Implement OAuth2 flow"
+mdm spawn tests --briefing "Payment tests" --connector gemini "Write tests for payments/"
+mdm spawn auth "Add refresh token support"  # agent exists → task is queued
 ```
 
-### Delegate a task
+Spawn creates the agent and runs the task in the background. If the agent already exists, the task is queued into it.
+
+### Check results
 
 ```bash
-mdm delegate --to agent-auth "refactor the JWT validation logic"
-mdm delegate --to agent-auth --timeout 10m "run a full analysis of the codebase"
+mdm result auth                  # latest task
+mdm result auth --task-id <id>   # specific task
 ```
-
-The response is printed to stdout. The agent's internal work is not shown. Default timeout is 5 minutes.
 
 ### Check agent status
 
 ```bash
 mdm status
-mdm status --all   # includes discarded agents
+mdm status --all
 ```
 
-### Inspect an agent
+### Rewind to a checkpoint
 
 ```bash
-mdm inspect agent-auth
-mdm inspect agent-auth --json
-```
-
-### List checkpoints and rewind
-
-```bash
-# Show available checkpoints
-mdm rewind agent-auth --list
-
-# Rewind to the most recent checkpoint (undo last task)
-mdm rewind agent-auth
-
-# Rewind to a specific checkpoint
-mdm rewind agent-auth --to pre-task-20260318-110000
+mdm rewind auth --list                        # show checkpoints
+mdm rewind auth                               # rewind to latest
+mdm rewind auth --to pre-task-20260318-110000  # rewind to specific
 ```
 
 Rewinds fork the session — the original is never deleted.
 
-### Task history
+### Remove an agent
 
 ```bash
-mdm history agent-auth
-mdm history agent-auth --tail 5
+mdm remove auth
 ```
 
-### Update the Middleman's notes about an agent
+## Documentation system
 
-```bash
-mdm context agent-auth "has read auth/handler.go and auth/middleware.go, decided to use JWT with RS256"
-```
+Each project has `.mdm/` with:
+- **`agents.md`** — mandatory steps for all agents (auto-injected into every briefing)
+- **`docs/`** — project documentation that agents read before modifying code
+- **`guides/`** — process guides (e.g. `how_mdm_works.md` — the Middleman's playbook)
+- **`templates/`** — templates for creating docs
 
-This is the Middleman's own notes about what an agent knows — separate from the agent's internal context.
-
-### Discard an agent
-
-```bash
-mdm discard agent-auth
-```
+`mdm sync-docs` generates skeleton docs automatically by scanning source files.
 
 ## Registry
 
@@ -156,8 +140,9 @@ mdm/
 ├── connector/     # AgentConnector interface + per-CLI implementations
 │   ├── claude/
 │   ├── gemini/
+│   ├── codex/
 │   └── opencode/
-├── orchestrator/  # Business logic: Spawn, Delegate, Rewind, Inspect
+├── orchestrator/  # Business logic: Spawn, Rewind, Remove, ListAgents
 ├── store/         # JSON persistence with atomic writes
 └── config/        # Runtime config, paths
 ```
