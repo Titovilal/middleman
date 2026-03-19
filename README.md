@@ -24,12 +24,12 @@ MDM uses a pluggable connector interface. Each connector wraps a different AI CL
 
 | Connector | Status |
 |---|---|
-| `claude` | Implemented (Claude Code CLI) |
-| `gemini` | Implemented (Gemini CLI) |
-| `codex` | Implemented (Codex CLI) |
-| `opencode` | Implemented (OpenCode CLI) |
+| `claude` | Tested (Claude Code CLI) |
+| `gemini` | Vibe-coded, untested (Gemini CLI) |
+| `codex` | Vibe-coded, untested (Codex CLI) |
+| `opencode` | Vibe-coded, untested (OpenCode CLI) |
 
-Adding a new connector only requires implementing the `AgentConnector` interface in `connector/<name>/`.
+Only the Claude connector has been verified. The rest are implemented but waiting for feedback or usage — expect rough edges. Adding a new connector only requires implementing the `AgentConnector` interface in `connector/<name>/`.
 
 ## Installation
 
@@ -103,7 +103,7 @@ mdm remove auth
 ## Documentation system
 
 Each project has `.mdm/` with:
-- **`agents.md`** — mandatory steps for all agents (auto-injected into every briefing)
+- **`guides/how_agents_should_behave.md`** — mandatory steps for all agents (auto-injected into every briefing)
 - **`docs/`** — project documentation that agents read before modifying code
 - **`guides/`** — process guides (e.g. `how_mdm_works.md` — the Middleman's playbook)
 - **`templates/`** — templates for creating docs
