@@ -7,6 +7,7 @@ import (
 	"github.com/Titovilal/middleman/config"
 	"github.com/Titovilal/middleman/connector"
 	claudeconn "github.com/Titovilal/middleman/connector/claude"
+	codexconn "github.com/Titovilal/middleman/connector/codex"
 	geminiconn "github.com/Titovilal/middleman/connector/gemini"
 	opencodeconn "github.com/Titovilal/middleman/connector/opencode"
 	"github.com/Titovilal/middleman/orchestrator"
@@ -27,7 +28,7 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "mdm",
 	Short: "The Middleman - AI agent orchestrator",
-	Long: `MDM (The Middleman) orchestrates multiple AI agent instances (Claude, Gemini, OpenCode).
+	Long: `MDM (The Middleman) orchestrates multiple AI agent instances (Claude, Codex, Gemini, OpenCode).
 The Middleman manages agent lifecycle, context, checkpoints, and rewinds.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(`MDM - The Middleman - AI agent orchestrator CLI.
@@ -62,6 +63,7 @@ The Middleman manages agent lifecycle, context, checkpoints, and rewinds.`,
 
 		reg := connector.NewConnectorRegistry()
 		reg.Register(claudeconn.New())
+		reg.Register(codexconn.New())
 		reg.Register(geminiconn.New())
 		reg.Register(opencodeconn.New())
 
@@ -79,6 +81,6 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&flags.workDir, "workdir", "w", "", "project directory (default: current dir)")
-	rootCmd.PersistentFlags().StringVarP(&flags.connector, "connector", "c", "", "default connector (claude|gemini|opencode)")
+	rootCmd.PersistentFlags().StringVarP(&flags.connector, "connector", "c", "", "default connector (claude|codex|gemini|opencode)")
 	rootCmd.PersistentFlags().BoolVarP(&flags.global, "global", "g", false, "use ~/.mdm/ instead of ./.mdm/")
 }

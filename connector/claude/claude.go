@@ -52,7 +52,7 @@ func New() *Connector {
 func (c *Connector) Name() string { return Name }
 
 func (c *Connector) Run(ctx context.Context, req connector.RunRequest) (connector.RunResult, error) {
-	args := []string{"--print", "--output-format", "json"}
+	args := []string{"--print", "--output-format", "json", "--dangerously-skip-permissions"}
 
 	sessionID := req.SessionID
 	if req.ForkFromSessionID != "" {

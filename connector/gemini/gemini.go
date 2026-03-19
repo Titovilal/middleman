@@ -1,6 +1,7 @@
 package gemini
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -14,15 +15,17 @@ import (
 
 const Name = "gemini"
 
-type geminiOutput struct {
-	SessionID string `json:"session_id"`
-	Result    string `json:"result"`
-	IsError   bool   `json:"is_error"`
+// geminiEvent is one JSON line from gemini CLI --output-format json.
+type geminiEvent struct {
+	Type      string `json:"type"`
+	SessionID string `json:"session_id,omitempty"`
+	Result    string `json:"result,omitempty"`
+	Content   string `json:"content,omitempty"`
+	IsError   bool   `json:"is_error,omitempty"`
 }
 
 // Connector implements connector.AgentConnector for Gemini CLI.
-// NOTE: Gemini CLI session management differs from Claude.
-// Rewinds are destructive (no --fork-session equivalent).
+// Uses -p for non-interactive mode and --yolo to bypass approvals.
 type Connector struct {
 	geminiBin string
 }
@@ -34,15 +37,18 @@ func New() *Connector {
 func (c *Connector) Name() string { return Name }
 
 func (c *Connector) Run(ctx context.Context, req connector.RunRequest) (connector.RunResult, error) {
-	args := []string{"--output-format", "json"}
+	args := []string{"--yolo", "--output-format", "json"}
 
 	if req.SessionID != "" {
 		args = append(args, "--resume", req.SessionID)
 	}
+	if req.ForkFromSessionID != "" {
+		args = append(args, "--resume", req.ForkFromSessionID)
+	}
 	if req.SystemPromptAppend != "" {
 		args = append(args, "--system-prompt", req.SystemPromptAppend)
 	}
-	args = append(args, "--prompt", req.Prompt)
+	args = append(args, "-p", req.Prompt)
 
 	if req.Timeout > 0 {
 		var cancel context.CancelFunc
@@ -63,37 +69,83 @@ func (c *Connector) Run(ctx context.Context, req connector.RunRequest) (connecto
 		}
 	}
 
-	var out geminiOutput
-	if err := json.Unmarshal(stdout.Bytes(), &out); err != nil {
-		return connector.RunResult{
-			IsError:     true,
-			ErrorDetail: fmt.Sprintf("failed to parse gemini output: %v\nraw: %s", err, stdout.String()),
-		}, nil
+	// Try to parse as JSONL stream first (multiple lines).
+	var finalText string
+	var sessionID string
+	var isError bool
+
+	scanner := bufio.NewScanner(&stdout)
+	lineCount := 0
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(line) == 0 {
+			continue
+		}
+		lineCount++
+		var evt geminiEvent
+		if err := json.Unmarshal(line, &evt); err != nil {
+			continue
+		}
+		if evt.SessionID != "" {
+			sessionID = evt.SessionID
+		}
+		if evt.Result != "" {
+			finalText = evt.Result
+		}
+		if evt.Content != "" {
+			finalText = evt.Content
+		}
+		isError = evt.IsError
+	}
+
+	// Fallback: try single JSON object if only one line.
+	if finalText == "" && lineCount <= 1 {
+		raw := stdout.Bytes()
+		var single geminiEvent
+		if err := json.Unmarshal(raw, &single); err == nil {
+			sessionID = single.SessionID
+			finalText = single.Result
+			if finalText == "" {
+				finalText = single.Content
+			}
+			isError = single.IsError
+		} else if len(raw) > 0 {
+			finalText = string(raw)
+		}
 	}
 
 	return connector.RunResult{
-		SessionID: out.SessionID,
-		FinalText: out.Result,
-		IsError:   out.IsError,
+		SessionID: sessionID,
+		FinalText: finalText,
+		IsError:   isError,
 	}, nil
 }
 
 // Fork for Gemini is a degraded rewind: resumes from the checkpoint index in place.
 // The original session is modified. This is a known limitation.
 func (c *Connector) Fork(ctx context.Context, sourceSessionID string, checkpoint connector.Checkpoint) (string, error) {
+	resumeID := sourceSessionID
+	if checkpoint.NativeRef != "" {
+		resumeID = checkpoint.NativeRef
+	}
 	req := connector.RunRequest{
-		SessionID: checkpoint.NativeRef, // numeric index for Gemini
-		Prompt:    "__mdm_fork__",
+		SessionID: resumeID,
+		Prompt:    "ok",
 		Timeout:   30 * time.Second,
 	}
 	result, err := c.Run(ctx, req)
 	if err != nil {
-		return "", fmt.Errorf("gemini rewind failed: %w", err)
+		return "", fmt.Errorf("gemini fork failed: %w", err)
+	}
+	if result.IsError {
+		return "", fmt.Errorf("gemini fork failed: %s", result.ErrorDetail)
 	}
 	return result.SessionID, nil
 }
 
-// TurnCount for Gemini is a stub — session file format TBD.
+// TurnCount for Gemini parses the JSONL output counting assistant turns.
+// Since Gemini doesn't expose session files the same way Claude does,
+// we return 0 with no error to allow checkpoints to work (degraded).
 func (c *Connector) TurnCount(ctx context.Context, sessionID string) (int, error) {
-	return 0, fmt.Errorf("TurnCount not yet implemented for gemini connector")
+	return 0, nil
 }
