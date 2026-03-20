@@ -109,15 +109,19 @@ func printBanner() {
 		purple = "\033[35m"
 		white  = "\033[97m"
 		green  = "\033[32m"
+
+		// Spanish flag palette (soft tones via 256-color)
+		red    = "\033[38;5;167m" // soft red
+		yellow = "\033[38;5;220m" // warm yellow
 	)
 
 	fmt.Println()
-	fmt.Println(purple + bold + "  ███╗   ███╗██████╗ ███╗   ███╗" + reset)
-	fmt.Println(purple + bold + "  ████╗ ████║██╔══██╗████╗ ████║" + reset)
-	fmt.Println(cyan + bold + "  ██╔████╔██║██║  ██║██╔████╔██║" + reset)
-	fmt.Println(cyan + bold + "  ██║╚██╔╝██║██║  ██║██║╚██╔╝██║" + reset)
-	fmt.Println(blue + bold + "  ██║ ╚═╝ ██║██████╔╝██║ ╚═╝ ██║" + reset)
-	fmt.Println(blue + bold + "  ╚═╝     ╚═╝╚═════╝ ╚═╝     ╚═╝" + reset)
+	fmt.Println(red + bold + "  ███╗   ███╗██████╗ ███╗   ███╗" + reset)
+	fmt.Println(red + bold + "  ████╗ ████║██╔══██╗████╗ ████║" + reset)
+	fmt.Println(yellow + bold + "  ██╔████╔██║██║  ██║██╔████╔██║" + reset)
+	fmt.Println(yellow + bold + "  ██║╚██╔╝██║██║  ██║██║╚██╔╝██║" + reset)
+	fmt.Println(red + bold + "  ██║ ╚═╝ ██║██████╔╝██║ ╚═╝ ██║" + reset)
+	fmt.Println(red + bold + "  ╚═╝     ╚═╝╚═════╝ ╚═╝     ╚═╝" + reset)
 	fmt.Println()
 	fmt.Println(white + bold + "  The Middleman" + reset + dim + " — AI agent orchestrator" + reset)
 	fmt.Println()
@@ -126,11 +130,14 @@ func printBanner() {
 	fmt.Println()
 	fmt.Println(dim + "  Connectors:  " + reset + cyan + "claude" + reset + dim + " · " + reset + cyan + "codex" + reset + dim + " · " + reset + cyan + "gemini" + reset + dim + " · " + reset + cyan + "opencode" + reset)
 	fmt.Println()
-	fmt.Println(dim + "  Get started:" + reset)
-	fmt.Println(dim + "    $ " + reset + white + "mdm sync-docs" + reset + dim + "         initialize .mdm/ in your project" + reset)
-	fmt.Println(dim + "    $ " + reset + white + "mdm launch claude" + reset + dim + "    spin up a Claude agent" + reset)
-	fmt.Println(dim + "    $ " + reset + white + "mdm spawn <id> ..." + reset + dim + "   send a task to an agent" + reset)
-	fmt.Println(dim + "    $ " + reset + white + "mdm status" + reset + dim + "            check running agents" + reset)
+	fmt.Println(red + bold + "  Quick start" + reset + dim + " — pick your flow:" + reset)
+	fmt.Println()
+	fmt.Println(white + bold + "  1. Launch mode" + reset + dim + " (mdm launches the agent for you)" + reset)
+	fmt.Println(dim + "     $ " + reset + white + "mdm sync-docs" + reset + dim + "          initialize .mdm/ in your project" + reset)
+	fmt.Println(dim + "     $ " + reset + white + "mdm launch claude" + reset + dim + "      start Claude as the Middleman" + reset)
+	fmt.Println()
+	fmt.Println(white + bold + "  2. Agent mode" + reset + dim + " (you're already inside an AI CLI)" + reset)
+	fmt.Println(dim + "     Tell your agent: " + reset + cyan + "\"Run mdm agent-prompt, read it, and act as the Middleman\"" + reset)
 	fmt.Println()
 	fmt.Println(dim + "  Run " + reset + white + "mdm --help" + reset + dim + " for all commands." + reset)
 	fmt.Println(dim + "  Docs: " + reset + blue + "https://github.com/Titovilal/middleman" + reset)
