@@ -57,10 +57,10 @@ var initFlags struct {
 	syncDocs   bool   // run sync-docs after init
 }
 
-// cliIntegration maps each CLI to the extra file it needs (beyond AGENTS.md).
+// cliIntegrations maps each CLI to the extra file it needs (beyond AGENTS.md).
 var cliIntegrations = []struct {
 	Name      string
-	ExtraFile string // empty if only AGENTS.md is needed
+	ExtraFile string
 }{
 	{Name: "claude", ExtraFile: "CLAUDE.md"},
 	{Name: "codex", ExtraFile: ""},
@@ -358,7 +358,7 @@ func confirmOverwrite(name string) bool {
 
 // initDefaults walks the embedded defaults/ tree and writes each file
 // into mdmDir if it doesn't already exist (or always if force is true).
-// AGENTS.md and CLAUDE.md are skipped here — they go to the project root.
+// AGENTS.md, CLAUDE.md and GEMINI.md are skipped here — they go to the project root.
 func initDefaults(mdmDir string, defaultsFS fs.FS, force bool) {
 	_ = fs.WalkDir(defaultsFS, "defaults", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || path == "defaults" {

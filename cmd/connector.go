@@ -8,22 +8,50 @@ import (
 	"os/exec"
 )
 
-// connector defines how to call an AI CLI to run a prompt.
+// connector defines how to call an AI CLI.
 type connector struct {
 	Name string
-	// Run executes the prompt and returns the text response.
+	// Open launches an interactive session with the given prompt.
+	Open func(workDir, prompt string) error
+	// Run executes the prompt synchronously and returns the text response.
 	Run func(workDir, prompt string) (string, error)
 }
 
 var connectors = map[string]connector{
-	"claude":  {Name: "claude", Run: runClaude},
-	"copilot": {Name: "copilot", Run: runCopilot},
-	"gemini":  {Name: "gemini", Run: runGemini},
-	"codex":   {Name: "codex", Run: runCodex},
-	"opencode": {Name: "opencode", Run: runOpenCode},
+	"claude":   {Name: "claude", Open: openClaude, Run: runClaude},
+	"copilot":  {Name: "copilot", Open: openCopilot, Run: runCopilot},
+	"gemini":   {Name: "gemini", Open: openGemini, Run: runGemini},
+	"codex":    {Name: "codex", Open: openCodex, Run: runCodex},
+	"opencode": {Name: "opencode", Open: openOpenCode, Run: runOpenCode},
+}
+
+// runInteractive launches a CLI command attached to the terminal (stdin/stdout/stderr).
+func runInteractive(workDir string, name string, args ...string) error {
+	c := exec.Command(name, args...)
+	c.Dir = workDir
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	return c.Run()
+}
+
+// runSync launches a CLI command and captures its stdout output.
+func runSync(workDir string, name string, args ...string) (string, error) {
+	c := exec.Command(name, args...)
+	c.Dir = workDir
+	c.Stderr = os.Stderr
+	out, err := c.Output()
+	if err != nil {
+		return "", fmt.Errorf("%s failed: %w", name, err)
+	}
+	return string(out), nil
 }
 
 // --- Claude ---
+
+func openClaude(workDir, prompt string) error {
+	return runInteractive(workDir, "claude", "--dangerously-skip-permissions", prompt)
+}
 
 type claudeOutput struct {
 	Result  string `json:"result"`
@@ -56,56 +84,40 @@ func runClaude(workDir, prompt string) (string, error) {
 
 // --- Copilot (GitHub Copilot CLI) ---
 
-func runCopilot(workDir, prompt string) (string, error) {
-	c := exec.Command("copilot", "--prompt", prompt, "--silent")
-	c.Dir = workDir
-	c.Stderr = os.Stderr
+func openCopilot(workDir, prompt string) error {
+	return runInteractive(workDir, "copilot", "--prompt", prompt)
+}
 
-	out, err := c.Output()
-	if err != nil {
-		return "", fmt.Errorf("copilot failed: %w", err)
-	}
-	return string(out), nil
+func runCopilot(workDir, prompt string) (string, error) {
+	return runSync(workDir, "copilot", "--prompt", prompt, "--silent")
 }
 
 // --- Gemini ---
 
-func runGemini(workDir, prompt string) (string, error) {
-	c := exec.Command("gemini", "--noinput", prompt)
-	c.Dir = workDir
-	c.Stderr = os.Stderr
+func openGemini(workDir, prompt string) error {
+	return runInteractive(workDir, "gemini", prompt)
+}
 
-	out, err := c.Output()
-	if err != nil {
-		return "", fmt.Errorf("gemini failed: %w", err)
-	}
-	return string(out), nil
+func runGemini(workDir, prompt string) (string, error) {
+	return runSync(workDir, "gemini", "--noinput", prompt)
 }
 
 // --- Codex ---
 
-func runCodex(workDir, prompt string) (string, error) {
-	c := exec.Command("codex", "--approval-mode", "full-auto", "--quiet", prompt)
-	c.Dir = workDir
-	c.Stderr = os.Stderr
+func openCodex(workDir, prompt string) error {
+	return runInteractive(workDir, "codex", "--approval-mode", "full-auto", prompt)
+}
 
-	out, err := c.Output()
-	if err != nil {
-		return "", fmt.Errorf("codex failed: %w", err)
-	}
-	return string(out), nil
+func runCodex(workDir, prompt string) (string, error) {
+	return runSync(workDir, "codex", "--approval-mode", "full-auto", "--quiet", prompt)
 }
 
 // --- OpenCode ---
 
-func runOpenCode(workDir, prompt string) (string, error) {
-	c := exec.Command("opencode", "--non-interactive", prompt)
-	c.Dir = workDir
-	c.Stderr = os.Stderr
+func openOpenCode(workDir, prompt string) error {
+	return runInteractive(workDir, "opencode", prompt)
+}
 
-	out, err := c.Output()
-	if err != nil {
-		return "", fmt.Errorf("opencode failed: %w", err)
-	}
-	return string(out), nil
+func runOpenCode(workDir, prompt string) (string, error) {
+	return runSync(workDir, "opencode", "--non-interactive", prompt)
 }
