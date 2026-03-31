@@ -38,11 +38,15 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-        run: go build -ldflags="-s -w -X github.com/Titovilal/context0/cmd.Version=${{ github.ref_name }}" -o ctx-${{ matrix.suffix }} .
+        run: |
+          go build -ldflags="-s -w -X github.com/Titovilal/context0/cmd.Version=${{ github.ref_name }}" -o ctx-${{ matrix.suffix }} .
+          cp ctx-${{ matrix.suffix }} mdm-${{ matrix.suffix }}
       - uses: actions/upload-artifact@v5
         with:
-          name: ctx-${{ matrix.suffix }}
-          path: ctx-${{ matrix.suffix }}
+          name: binaries-${{ matrix.suffix }}
+          path: |
+            ctx-${{ matrix.suffix }}
+            mdm-${{ matrix.suffix }}
 
   release:
     needs: build

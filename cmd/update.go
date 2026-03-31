@@ -28,6 +28,12 @@ var updateCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		stStep("Current version: " + stValue(Version))
 
+		// Detect if running as the old "mdm" binary.
+		migratingFromMdm := isRunningAsMdm()
+		if migratingFromMdm {
+			stStep(stWarn("Migrating from mdm to ctx") + "...")
+		}
+
 		resp, err := http.Get("https://api.github.com/repos/Titovilal/context0/releases/latest")
 		if err != nil {
 			return fmt.Errorf("failed to check for updates: %w", err)
@@ -45,7 +51,7 @@ var updateCmd = &cobra.Command{
 
 		latest := strings.TrimPrefix(release.TagName, "v")
 		current := strings.TrimPrefix(Version, "v")
-		if latest == current {
+		if latest == current && !migratingFromMdm {
 			stDone("Already up to date.")
 			return nil
 		}
@@ -108,13 +114,60 @@ var updateCmd = &cobra.Command{
 			}
 		}
 
+		// Clean up old mdm binary if migrating.
+		if migratingFromMdm {
+			removeOldMdmBinary(installPath)
+		}
+
 		fmt.Println()
 		stDone("Updated to " + stOk(latest))
+		if migratingFromMdm {
+			stDone("Migration complete. Use " + stValue("ctx") + " from now on.")
+		}
 		return nil
 	},
 }
 
+// isRunningAsMdm returns true if the current binary is named "mdm".
+func isRunningAsMdm() bool {
+	exe, err := os.Executable()
+	if err != nil {
+		return false
+	}
+	base := strings.ToLower(filepath.Base(exe))
+	return base == "mdm" || base == "mdm.exe"
+}
+
+// removeOldMdmBinary attempts to remove the old mdm binary after migration.
+func removeOldMdmBinary(newCtxPath string) {
+	exe, err := os.Executable()
+	if err != nil {
+		return
+	}
+	exe, _ = filepath.EvalSymlinks(exe)
+
+	// Don't remove if it's the same file as the new ctx binary.
+	if strings.EqualFold(exe, newCtxPath) {
+		return
+	}
+
+	if runtime.GOOS == "windows" {
+		// On Windows the running exe can't be deleted, but can be renamed.
+		// Rename to .old and it will be cleaned up on next update.
+		_ = os.Rename(exe, exe+".old")
+		return
+	}
+
+	// On Unix, try direct removal; fall back to sudo if in /usr/.
+	if err := os.Remove(exe); err != nil && strings.HasPrefix(exe, "/usr/") {
+		rmCmd := exec.Command("sudo", "rm", exe)
+		rmCmd.Stderr = os.Stderr
+		_ = rmCmd.Run()
+	}
+}
+
 // resolveInstallPath returns the target binary path and whether a migration happened.
+// If running as "mdm", installs "ctx" in the same directory.
 // On Windows: always use %LOCALAPPDATA%\ctx\ctx.exe (user-writable).
 // On Unix: use the current binary location, or ~/.local/bin/ctx if in a system dir.
 func resolveInstallPath() (string, bool) {
@@ -124,18 +177,35 @@ func resolveInstallPath() (string, bool) {
 	}
 	currentBin, _ = filepath.EvalSymlinks(currentBin)
 
+	// If running as mdm, install ctx next to it.
+	if isRunningAsMdm() {
+		dir := filepath.Dir(currentBin)
+		target := filepath.Join(dir, "ctx")
+		if runtime.GOOS == "windows" {
+			target += ".exe"
+		}
+		// If mdm is in a system dir, migrate to user dir.
+		if runtime.GOOS == "windows" {
+			lower := strings.ToLower(currentBin)
+			if strings.Contains(lower, "\\windows\\") || strings.Contains(lower, "\\system32\\") {
+				return filepath.Join(os.Getenv("LOCALAPPDATA"), "ctx", "ctx.exe"), true
+			}
+		} else if strings.HasPrefix(currentBin, "/usr/") {
+			home, _ := os.UserHomeDir()
+			return filepath.Join(home, ".local", "bin", "ctx"), true
+		}
+		return target, false
+	}
+
 	if runtime.GOOS == "windows" {
 		userDir := filepath.Join(os.Getenv("LOCALAPPDATA"), "ctx", "ctx.exe")
-		// If currently running from a system dir (e.g. system32), migrate.
 		lower := strings.ToLower(currentBin)
 		if strings.Contains(lower, "\\windows\\") || strings.Contains(lower, "\\system32\\") {
 			return userDir, true
 		}
-		// If already in user dir, stay there.
 		if strings.EqualFold(currentBin, userDir) {
 			return userDir, false
 		}
-		// Otherwise use the user dir too (safer default).
 		return userDir, true
 	}
 
