@@ -38,11 +38,11 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-        run: go build -ldflags="-s -w -X github.com/Titovilal/middleman/cmd.Version=${{ github.ref_name }}" -o mdm-${{ matrix.suffix }} .
+        run: go build -ldflags="-s -w -X github.com/Titovilal/context0/cmd.Version=${{ github.ref_name }}" -o ctx-${{ matrix.suffix }} .
       - uses: actions/upload-artifact@v5
         with:
-          name: mdm-${{ matrix.suffix }}
-          path: mdm-${{ matrix.suffix }}
+          name: ctx-${{ matrix.suffix }}
+          path: ctx-${{ matrix.suffix }}
 
   release:
     needs: build
@@ -72,9 +72,9 @@ jobs:
             echo ""
             echo "## Installation"
             echo ""
-            echo '**Linux / macOS:** `curl -sL https://raw.githubusercontent.com/Titovilal/middleman/main/install.sh | sh`'
+            echo '**Linux / macOS:** `curl -sL https://raw.githubusercontent.com/Titovilal/context0/main/install.sh | sh`'
             echo ""
-            echo '**Windows (PowerShell):** `irm https://raw.githubusercontent.com/Titovilal/middleman/main/install.ps1 | iex`'
+            echo '**Windows (PowerShell):** `irm https://raw.githubusercontent.com/Titovilal/context0/main/install.ps1 | iex`'
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Create release

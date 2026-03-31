@@ -3,7 +3,7 @@ package main
 import (
 	"embed"
 
-	"github.com/Titovilal/middleman/cmd"
+	"github.com/Titovilal/context0/cmd"
 )
 
 //go:embed defaults

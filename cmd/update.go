@@ -23,12 +23,12 @@ type ghRelease struct {
 
 var updateCmd = &cobra.Command{
 	Use:         "update",
-	Short:       "Update mdm to the latest version",
+	Short:       "Update ctx to the latest version",
 	Annotations: map[string]string{"skip_init": "true"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		stStep("Current version: " + stValue(Version))
 
-		resp, err := http.Get("https://api.github.com/repos/Titovilal/middleman/releases/latest")
+		resp, err := http.Get("https://api.github.com/repos/Titovilal/context0/releases/latest")
 		if err != nil {
 			return fmt.Errorf("failed to check for updates: %w", err)
 		}
@@ -54,11 +54,11 @@ var updateCmd = &cobra.Command{
 
 		goos := runtime.GOOS
 		goarch := runtime.GOARCH
-		asset := fmt.Sprintf("mdm-%s-%s", goos, goarch)
+		asset := fmt.Sprintf("ctx-%s-%s", goos, goarch)
 		if goos == "windows" {
 			asset += ".exe"
 		}
-		dlURL := fmt.Sprintf("https://github.com/Titovilal/middleman/releases/download/%s/%s", latest, asset)
+		dlURL := fmt.Sprintf("https://github.com/Titovilal/context0/releases/download/%s/%s", latest, asset)
 
 		// Determine install target early so we can download next to it.
 		installPath, migrated := resolveInstallPath()
@@ -73,7 +73,7 @@ var updateCmd = &cobra.Command{
 		// Download to the same directory as the install target so os.Rename
 		// never crosses a volume boundary (common cause of "Access is denied"
 		// on Windows when %TEMP% is on a different drive).
-		tmpName := "mdm-update"
+		tmpName := "ctx-update"
 		if goos == "windows" {
 			tmpName += ".exe"
 		}
@@ -115,17 +115,17 @@ var updateCmd = &cobra.Command{
 }
 
 // resolveInstallPath returns the target binary path and whether a migration happened.
-// On Windows: always use %LOCALAPPDATA%\mdm\mdm.exe (user-writable).
-// On Unix: use the current binary location, or ~/.local/bin/mdm if in a system dir.
+// On Windows: always use %LOCALAPPDATA%\ctx\ctx.exe (user-writable).
+// On Unix: use the current binary location, or ~/.local/bin/ctx if in a system dir.
 func resolveInstallPath() (string, bool) {
 	currentBin, err := os.Executable()
 	if err != nil {
-		currentBin = "mdm"
+		currentBin = "ctx"
 	}
 	currentBin, _ = filepath.EvalSymlinks(currentBin)
 
 	if runtime.GOOS == "windows" {
-		userDir := filepath.Join(os.Getenv("LOCALAPPDATA"), "mdm", "mdm.exe")
+		userDir := filepath.Join(os.Getenv("LOCALAPPDATA"), "ctx", "ctx.exe")
 		// If currently running from a system dir (e.g. system32), migrate.
 		lower := strings.ToLower(currentBin)
 		if strings.Contains(lower, "\\windows\\") || strings.Contains(lower, "\\system32\\") {
@@ -142,7 +142,7 @@ func resolveInstallPath() (string, bool) {
 	// Unix: if binary is in /usr/ (needs sudo), migrate to ~/.local/bin/
 	if strings.HasPrefix(currentBin, "/usr/") {
 		home, _ := os.UserHomeDir()
-		return filepath.Join(home, ".local", "bin", "mdm"), true
+		return filepath.Join(home, ".local", "bin", "ctx"), true
 	}
 	return currentBin, false
 }
@@ -271,7 +271,7 @@ var versionCmd = &cobra.Command{
 	Short:       "Print the current version",
 	Annotations: map[string]string{"skip_init": "true"},
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(stDim("mdm ") + stOk(strings.TrimPrefix(Version, "v")))
+		fmt.Println(stDim("ctx ") + stOk(strings.TrimPrefix(Version, "v")))
 	},
 }
 

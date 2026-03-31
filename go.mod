@@ -1,4 +1,4 @@
-module github.com/Titovilal/middleman
+module github.com/Titovilal/context0
 
 go 1.23.5
 

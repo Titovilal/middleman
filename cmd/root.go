@@ -16,20 +16,20 @@ import (
 
 var defaultsFS embed.FS
 
-// SetDefaultsFS receives the embedded .mdm/ defaults from main.go.
+// SetDefaultsFS receives the embedded .ctx/ defaults from main.go.
 func SetDefaultsFS(fs embed.FS) { defaultsFS = fs }
 
 var workDir string
 
 var rootCmd = &cobra.Command{
-	Use:   "mdm",
-	Short: "MDM - AI documentation manager",
-	Long:  `MDM manages project documentation in .mdm/ using AI-powered doc generation.`,
+	Use:   "ctx",
+	Short: "Context0 - AI documentation manager",
+	Long:  `Context0 manages project documentation in .ctx/ using AI-powered doc generation.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		printBanner()
 	},
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if cmd.Name() == "mdm" || cmd.Annotations["skip_init"] == "true" {
+		if cmd.Name() == "ctx" || cmd.Annotations["skip_init"] == "true" {
 			return nil
 		}
 
@@ -41,9 +41,9 @@ var rootCmd = &cobra.Command{
 			workDir = wd
 		}
 
-		guidePath := filepath.Join(workDir, ".mdm", "guides", "the_middleman.md")
+		guidePath := filepath.Join(workDir, ".ctx", "guides", "how_to_sync_docs.md")
 		if _, err := os.Stat(guidePath); os.IsNotExist(err) {
-			return fmt.Errorf(".mdm/ is not initialized. Run 'mdm init' first")
+			return fmt.Errorf(".ctx/ is not initialized. Run 'ctx init' first")
 		}
 
 		return nil
@@ -71,7 +71,7 @@ var cliIntegrations = []struct {
 
 var initCmd = &cobra.Command{
 	Use:         "init",
-	Short:       "Initialize .mdm/ in the current project",
+	Short:       "Initialize .ctx/ in the current project",
 	Annotations: map[string]string{"skip_init": "true"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if workDir == "" {
@@ -83,8 +83,8 @@ var initCmd = &cobra.Command{
 		}
 
 		// --- resolve init mode ---
-		mdmDir := filepath.Join(workDir, ".mdm")
-		_, existsErr := os.Stat(mdmDir)
+		ctxDir := filepath.Join(workDir, ".ctx")
+		_, existsErr := os.Stat(ctxDir)
 		alreadyExists := !os.IsNotExist(existsErr)
 
 		mode := strings.ToLower(initFlags.mode)
@@ -97,9 +97,9 @@ var initCmd = &cobra.Command{
 
 		switch mode {
 		case "fresh":
-			stStep("Removing existing " + stValue(".mdm/") + " ...")
-			if err := os.RemoveAll(mdmDir); err != nil {
-				return fmt.Errorf("remove .mdm dir: %w", err)
+			stStep("Removing existing " + stValue(".ctx/") + " ...")
+			if err := os.RemoveAll(ctxDir); err != nil {
+				return fmt.Errorf("remove .ctx dir: %w", err)
 			}
 			for _, cli := range cliIntegrations {
 				if cli.ExtraFile != "" {
@@ -108,18 +108,18 @@ var initCmd = &cobra.Command{
 			}
 			os.Remove(filepath.Join(workDir, "AGENTS.md"))
 		case "keep":
-			stSkip(".mdm/ — keeping existing files")
+			stSkip(".ctx/ — keeping existing files")
 			return nil
 		}
 
 		force := mode == "overwrite" || mode == "fresh"
 
-		if err := os.MkdirAll(mdmDir, 0o755); err != nil {
-			return fmt.Errorf("create .mdm dir: %w", err)
+		if err := os.MkdirAll(ctxDir, 0o755); err != nil {
+			return fmt.Errorf("create .ctx dir: %w", err)
 		}
 
-		initDefaults(mdmDir, defaultsFS, force)
-		_ = os.MkdirAll(filepath.Join(mdmDir, "docs"), 0o755)
+		initDefaults(ctxDir, defaultsFS, force)
+		_ = os.MkdirAll(filepath.Join(ctxDir, "docs"), 0o755)
 
 		// --- CLI selection ---
 		var selected []struct {
@@ -153,10 +153,10 @@ var initCmd = &cobra.Command{
 		} else {
 			defaultCLI = selectDefaultCLI(selected)
 		}
-		saveConfig(mdmDir, defaultCLI)
+		saveConfig(ctxDir, defaultCLI)
 
 		stTitle("Initialized")
-		stDone(fmt.Sprintf(".mdm/ in %s", stValue(workDir)))
+		stDone(fmt.Sprintf(".ctx/ in %s", stValue(workDir)))
 		stDone(fmt.Sprintf("Default CLI: %s", stValue(defaultCLI)))
 
 		// --- Sync docs ---
@@ -171,7 +171,7 @@ var initCmd = &cobra.Command{
 		}
 
 		fmt.Println()
-		stStep("Run " + stValue("mdm sync-docs") + " to generate documentation.")
+		stStep("Run " + stValue("ctx sync-docs") + " to generate documentation.")
 		return nil
 	},
 }
@@ -282,21 +282,21 @@ func selectDefaultCLI(selected []struct {
 	return selected[0].Name
 }
 
-type mdmConfig struct {
+type ctxConfig struct {
 	DefaultCLI string `json:"default_cli"`
 }
 
-func saveConfig(mdmDir string, defaultCLI string) {
-	cfg := mdmConfig{DefaultCLI: defaultCLI}
+func saveConfig(ctxDir string, defaultCLI string) {
+	cfg := ctxConfig{DefaultCLI: defaultCLI}
 	data, _ := json.MarshalIndent(cfg, "", "  ")
-	_ = os.WriteFile(filepath.Join(mdmDir, "config.json"), data, 0o644)
+	_ = os.WriteFile(filepath.Join(ctxDir, "config.json"), data, 0o644)
 }
 
-func loadConfig(mdmDir string) mdmConfig {
-	var cfg mdmConfig
-	data, err := os.ReadFile(filepath.Join(mdmDir, "config.json"))
+func loadConfig(ctxDir string) ctxConfig {
+	var cfg ctxConfig
+	data, err := os.ReadFile(filepath.Join(ctxDir, "config.json"))
 	if err != nil {
-		return mdmConfig{DefaultCLI: "claude"}
+		return ctxConfig{DefaultCLI: "claude"}
 	}
 	_ = json.Unmarshal(data, &cfg)
 	if cfg.DefaultCLI == "" {
@@ -321,16 +321,16 @@ func copyRootFile(name string, force bool) {
 	stDone(fmt.Sprintf("Created %s", stValue(name)))
 }
 
-// selectInitMode asks the user how to handle an existing .mdm/ directory.
+// selectInitMode asks the user how to handle an existing .ctx/ directory.
 // Returns "overwrite", "fresh", or "skip".
 func selectInitMode() string {
 	reader := bufio.NewReader(os.Stdin)
 
 	fmt.Println()
-	fmt.Println(stHeader("  .mdm/ already exists"))
+	fmt.Println(stHeader("  .ctx/ already exists"))
 	fmt.Println()
 	fmt.Println(stDim("  1.") + " " + stValue("Overwrite") + stDim("  — merge defaults, ask per file"))
-	fmt.Println(stDim("  2.") + " " + stValue("Fresh start") + stDim(" — delete .mdm/ and recreate from scratch"))
+	fmt.Println(stDim("  2.") + " " + stValue("Fresh start") + stDim(" — delete .ctx/ and recreate from scratch"))
 	fmt.Println(stDim("  3.") + " " + stValue("Skip") + stDim("        — keep everything as-is"))
 	fmt.Println()
 	fmt.Print(stDim("  Choose [1]: "))
@@ -357,9 +357,9 @@ func confirmOverwrite(name string) bool {
 }
 
 // initDefaults walks the embedded defaults/ tree and writes each file
-// into mdmDir if it doesn't already exist (or always if force is true).
+// into ctxDir if it doesn't already exist (or always if force is true).
 // AGENTS.md, CLAUDE.md and GEMINI.md are skipped here — they go to the project root.
-func initDefaults(mdmDir string, defaultsFS fs.FS, force bool) {
+func initDefaults(ctxDir string, defaultsFS fs.FS, force bool) {
 	_ = fs.WalkDir(defaultsFS, "defaults", func(path string, d fs.DirEntry, err error) error {
 		if err != nil || path == "defaults" {
 			return nil
@@ -371,7 +371,7 @@ func initDefaults(mdmDir string, defaultsFS fs.FS, force bool) {
 			return nil
 		}
 
-		target := filepath.Join(mdmDir, rel)
+		target := filepath.Join(ctxDir, rel)
 
 		if d.IsDir() {
 			_ = os.MkdirAll(target, 0o755)
@@ -413,35 +413,35 @@ func init() {
 
 func printBanner() {
 	fmt.Println()
-	fmt.Println(cRed + cBold + "  ███╗   ███╗██████╗ ███╗   ███╗" + cReset)
-	fmt.Println(cRed + cBold + "  ████╗ ████║██╔══██╗████╗ ████║" + cReset)
-	fmt.Println(cYellow + cBold + "  ██╔████╔██║██║  ██║██╔████╔██║" + cReset)
-	fmt.Println(cYellow + cBold + "  ██║╚██╔╝██║██║  ██║██║╚██╔╝██║" + cReset)
-	fmt.Println(cRed + cBold + "  ██║ ╚═╝ ██║██████╔╝██║ ╚═╝ ██║" + cReset)
-	fmt.Println(cRed + cBold + "  ╚═╝     ╚═╝╚═════╝ ╚═╝     ╚═╝" + cReset)
+	fmt.Println(cRed + cBold + "   ██████╗████████╗██╗  ██╗" + cReset)
+	fmt.Println(cRed + cBold + "  ██╔════╝╚══██╔══╝╚██╗██╔╝" + cReset)
+	fmt.Println(cYellow + cBold + "  ██║        ██║    ╚███╔╝ " + cReset)
+	fmt.Println(cYellow + cBold + "  ██║        ██║    ██╔██╗ " + cReset)
+	fmt.Println(cRed + cBold + "  ╚██████╗   ██║   ██╔╝ ██╗" + cReset)
+	fmt.Println(cRed + cBold + "   ╚═════╝   ╚═╝   ╚═╝  ╚═╝" + cReset)
 	fmt.Println()
-	fmt.Println(stHeader("  The Middleman") + stDim(" — One agent to rule them all"))
+	fmt.Println(stHeader("  Context0") + stDim(" — AI-powered documentation manager"))
 	fmt.Println()
 	fmt.Printf(cDim+"  version "+cReset+cGreen+"%s"+cReset+cDim+"  go "+cReset+cGreen+"%s"+cReset+cDim+"  %s/%s"+cReset+"\n",
 		Version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 	fmt.Println()
 	fmt.Println(stHeader("  Structure:"))
-	fmt.Println(stDim("     .mdm/"))
-	fmt.Println(stDim("     ├── guides/      instructions for how MDM operates"))
+	fmt.Println(stDim("     .ctx/"))
+	fmt.Println(stDim("     ├── guides/      instructions for how Context0 operates"))
 	fmt.Println(stDim("     ├── templates/   templates for generating docs"))
 	fmt.Println(stDim("     └── docs/        generated project documentation"))
 	fmt.Println()
 	fmt.Println(stHeader("  Commands:"))
-	fmt.Println(stDim("     $ ") + stValue("mdm init") + stDim("          initialize .mdm/ in your project"))
-	fmt.Println(stDim("     $ ") + stValue("mdm sync-docs") + stDim("     generate/update documentation"))
-	fmt.Println(stDim("     $ ") + stValue("mdm update") + stDim("        self-update to the latest version"))
-	fmt.Println(stDim("     $ ") + stValue("mdm version") + stDim("       print current version"))
+	fmt.Println(stDim("     $ ") + stValue("ctx init") + stDim("          initialize .ctx/ in your project"))
+	fmt.Println(stDim("     $ ") + stValue("ctx sync-docs") + stDim("     generate/update documentation"))
+	fmt.Println(stDim("     $ ") + stValue("ctx update") + stDim("        self-update to the latest version"))
+	fmt.Println(stDim("     $ ") + stValue("ctx version") + stDim("       print current version"))
 	fmt.Println()
 	fmt.Println(stHeader("  Quick start:"))
-	fmt.Println(stDim("     1. ") + stValue("mdm init") + stDim("          in your project root"))
-	fmt.Println(stDim("     2. ") + stValue("mdm sync-docs") + stDim("     to generate documentation"))
-	fmt.Println(stDim("     3. docs appear in ") + stValue(".mdm/docs/"))
+	fmt.Println(stDim("     1. ") + stValue("ctx init") + stDim("          in your project root"))
+	fmt.Println(stDim("     2. ") + stValue("ctx sync-docs") + stDim("     to generate documentation"))
+	fmt.Println(stDim("     3. docs appear in ") + stValue(".ctx/docs/"))
 	fmt.Println()
-	fmt.Println(stDim("  Docs: ") + cBlue + "https://github.com/Titovilal/middleman" + cReset)
+	fmt.Println(stDim("  Docs: ") + cBlue + "https://github.com/Titovilal/context0" + cReset)
 	fmt.Println()
 }

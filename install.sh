@@ -1,9 +1,9 @@
 #!/bin/sh
 set -e
 
-REPO="Titovilal/middleman"
+REPO="Titovilal/context0"
 INSTALL_DIR="/usr/local/bin"
-BINARY="mdm"
+BINARY="ctx"
 
 # Detect OS and arch
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
@@ -20,7 +20,7 @@ case "$OS" in
   *) echo "Unsupported OS: $OS" && exit 1 ;;
 esac
 
-ASSET="mdm-${OS}-${ARCH}"
+ASSET="ctx-${OS}-${ARCH}"
 
 # Get latest release tag
 TAG=$(curl -sL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
@@ -42,4 +42,4 @@ else
   sudo mv "/tmp/${BINARY}" "${INSTALL_DIR}/${BINARY}"
 fi
 
-echo "Done. Run 'mdm' to get started."
+echo "Done. Run 'ctx' to get started."

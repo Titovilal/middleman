@@ -12,7 +12,7 @@
 2. [What happens in between]
 3. [What is the result]
 
-## Documentation available in `.mdm/docs/`
+## Documentation available in `.ctx/docs/`
 - **`[doc_name].md`** — [what it documents]
 
 ---

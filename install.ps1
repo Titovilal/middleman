@@ -1,8 +1,8 @@
 $ErrorActionPreference = "Stop"
 
-$Repo = "Titovilal/middleman"
-$Binary = "mdm.exe"
-$Asset = "mdm-windows-amd64.exe"
+$Repo = "Titovilal/context0"
+$Binary = "ctx.exe"
+$Asset = "ctx-windows-amd64.exe"
 
 # Get latest release tag
 $Release = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases/latest"
@@ -13,10 +13,10 @@ if (-not $Tag) {
 }
 
 $Url = "https://github.com/$Repo/releases/download/$Tag/$Asset"
-$InstallDir = "$env:LOCALAPPDATA\mdm"
+$InstallDir = "$env:LOCALAPPDATA\ctx"
 $InstallPath = "$InstallDir\$Binary"
 
-Write-Host "Downloading mdm $Tag (windows/amd64)..."
+Write-Host "Downloading ctx $Tag (windows/amd64)..."
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 Invoke-WebRequest -Uri $Url -OutFile $InstallPath
 
@@ -27,4 +27,4 @@ if ($UserPath -notlike "*$InstallDir*") {
     Write-Host "Added $InstallDir to your PATH."
 }
 
-Write-Host "Done. Restart your terminal and run 'mdm' to get started."
+Write-Host "Done. Restart your terminal and run 'ctx' to get started."

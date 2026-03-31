@@ -1,4 +1,4 @@
-# Releasing MDM
+# Releasing Context0
 
 ## Publish a new version
 
@@ -16,6 +16,15 @@ git push origin 26.3.18.1
 
 The workflow compiles binaries for linux/amd64, linux/arm64, darwin/amd64, darwin/arm64, windows/amd64 and creates a GitHub Release automatically.
 
+## Migration from mdm
+
+Users coming from `mdm` (the old name) need to:
+
+1. Rename `.mdm/` to `.ctx/` in their projects
+2. Replace `mdm` with `ctx` in any scripts or aliases
+3. Remove the old `mdm` binary (`which mdm` to find it, then delete)
+4. Install `ctx` using the install script below
+
 ## Commit naming
 
 Use [Conventional Commits](https://www.conventionalcommits.org/):
@@ -23,7 +32,7 @@ Use [Conventional Commits](https://www.conventionalcommits.org/):
 ```
 feat: add background task queue
 fix: agent not resuming after rewind
-refactor: rename ctm to mdm
+refactor: rename mdm to ctx
 docs: update README installation
 chore: add release workflow
 ```
@@ -44,14 +53,14 @@ No `v` prefix.
 ## Verify the release
 
 After pushing the tag, check:
-1. https://github.com/Titovilal/middleman/actions — workflow should be green
-2. https://github.com/Titovilal/middleman/releases — release should have 5 binaries
+1. https://github.com/Titovilal/context0/actions — workflow should be green
+2. https://github.com/Titovilal/context0/releases — release should have 5 binaries
 
 ## Test the install script
 
 ```bash
-curl -sL https://raw.githubusercontent.com/Titovilal/middleman/main/install.sh | sh
-mdm --help
+curl -sL https://raw.githubusercontent.com/Titovilal/context0/main/install.sh | sh
+ctx --help
 ```
 
 ## Hotfix a release
