@@ -1,10 +1,10 @@
 module github.com/Titovilal/context0
 
-go 1.25.0
+go 1.23.0
 
 require (
 	github.com/spf13/cobra v1.10.2
-	golang.org/x/sync v0.20.0
+	golang.org/x/sync v0.12.0
 )
 
 require (
