@@ -434,6 +434,6 @@ func printBanner() {
 	fmt.Println(stDim("     ├── templates/   doc generation templates"))
 	fmt.Println(stDim("     └── docs/        generated documentation"))
 	fmt.Println()
-	fmt.Println(stDim("  Docs: ") + cBlue + "https://github.com/Titovilal/context0" + cReset)
+	fmt.Println(stDim("  Repo: ") + cBlue + "https://github.com/Titovilal/context0" + cReset)
 	fmt.Println()
 }
