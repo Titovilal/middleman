@@ -47,6 +47,7 @@ Supported connectors: %s`, strings.Join(connectorNames(), ", ")),
 		}
 		docTemplate, _ := os.ReadFile(filepath.Join(wd, ".ctx", "templates", "doc_template.md"))
 		overviewTemplate, _ := os.ReadFile(filepath.Join(wd, ".ctx", "templates", "project_overview_template.md"))
+		syncLogTemplate, _ := os.ReadFile(filepath.Join(wd, ".ctx", "templates", "sync_log_template.md"))
 
 		// ── Phase 1: generate project_overview.md ──
 
@@ -128,8 +129,32 @@ Here is the project overview for context:
 			})
 		}
 
-		if err := g.Wait(); err != nil {
-			return fmt.Errorf("phase 2: %w", err)
+		phase2Err := g.Wait()
+
+		if phase2Err != nil {
+			return fmt.Errorf("phase 2: %w", phase2Err)
+		}
+
+		// ── Phase 3: write sync log ──
+
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr, cDim+"  ▸ "+cReset+"Phase 3: writing sync log with "+stValue(conn.Name)+stDim("..."))
+
+		logPrompt := fmt.Sprintf(`You are a documentation agent. Your ONLY job is to write a sync log file in .ctx/logs/ following the template below.
+
+IMPORTANT: Do NOT create or modify any other files. Only create a new file in .ctx/logs/.
+
+## Sync log template
+%s
+
+## Guide (for context on what was done)
+%s`, string(syncLogTemplate), string(guide))
+
+		_, err = conn.Run(wd, logPrompt)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, stErr("  ✗ ")+"Sync log: "+err.Error())
+		} else {
+			fmt.Fprintln(os.Stderr, stOk("  ✓ ")+"Sync log written.")
 		}
 
 		fmt.Fprintln(os.Stderr)

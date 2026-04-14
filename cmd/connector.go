@@ -43,7 +43,7 @@ type claudeOutput struct {
 }
 
 func runClaude(workDir, prompt string) (string, error) {
-	c := exec.Command("claude", "--print", "--output-format", "json", "--dangerously-skip-permissions", prompt)
+	c := exec.Command("claude", "--print", "--output-format", "json", "--model", "sonnet", "--dangerously-skip-permissions", prompt)
 	c.Dir = workDir
 	c.Stderr = os.Stderr
 
